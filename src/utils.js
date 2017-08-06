@@ -3,34 +3,33 @@ import joi2jsonSchema from 'joi-to-json-schema'
 import cloneDeepWith from 'lodash/cloneDeepWith'
 export const debug = Debug('joi-swagger')
 
-const ctx2paramMap = {
-  'pathParams': 'path',
-  'query': 'query',
-  'headers': 'header',
-  'body': 'formData',
-}
-
 const joiKey = 'jsonSchema'
 
 export function toSwaggerParams(joiMap) {
   let params = []
   Object.keys(joiMap).forEach(key => {
     const fullJsonSchema = joi2jsonSchema(joiMap[key])
-    for (let name in fullJsonSchema.properties) {
-      const jsonSchema = fullJsonSchema.properties[name]
-      const paramType = ctx2paramMap[key]
-      const param = {
-        name,
+
+    if (key === 'body') {
+      params.push({
+        name: 'body',
         allowEmptyValue: true,
-        in: paramType,
-        required: fullJsonSchema.required && fullJsonSchema.required.indexOf(name) >= 0,
-      }
-      if (paramType === 'body') {
-        param.schema = jsonSchema
-      } else {
+        in: 'body',
+        required: fullJsonSchema.required,
+        schema: fullJsonSchema
+      })
+    } else {
+      for (let name in fullJsonSchema.properties) {
+        const jsonSchema = fullJsonSchema.properties[name]
+        const param = {
+          name,
+          allowEmptyValue: true,
+          in: key,
+          required: fullJsonSchema.required && fullJsonSchema.required.indexOf(name) >= 0,
+        }
         Object.assign(param, jsonSchema)
+        params.push(param)
       }
-      params.push(param)
     }
   })
   params[joiKey] = joiMap
